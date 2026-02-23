@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NS.QueuePulse", "NS.QueuePulse\NS.QueuePulse.csproj", "{AF6142E5-1531-43D0-A0CC-6FA3CCE02858}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QueuePulse.Sample", "QueuePulse.Sample\QueuePulse.Sample.csproj", "{E2837053-12EC-436F-AF46-34571E3C4DA5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AF6142E5-1531-43D0-A0CC-6FA3CCE02858}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF6142E5-1531-43D0-A0CC-6FA3CCE02858}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF6142E5-1531-43D0-A0CC-6FA3CCE02858}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF6142E5-1531-43D0-A0CC-6FA3CCE02858}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2837053-12EC-436F-AF46-34571E3C4DA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2837053-12EC-436F-AF46-34571E3C4DA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2837053-12EC-436F-AF46-34571E3C4DA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2837053-12EC-436F-AF46-34571E3C4DA5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
