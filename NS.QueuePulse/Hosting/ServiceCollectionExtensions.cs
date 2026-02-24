@@ -9,34 +9,48 @@ namespace NS.QueuePulse.Hosting;
 
 public static class ServiceCollectionExtensions
 {
-    /// <summary>
-    /// In-memory QueuePulse: Channels + InMemory repo + BackgroundService worker.
-    /// </summary>
     public static IServiceCollection AddQueuePulseInMemory(
         this IServiceCollection services,
-        Action<QueuePulseOptions>? configure = null)
+        Action<QueuePulseOptions>? configure = null,
+        Action<QueuePulseClientOptions>? configureClient = null)
     {
         var options = new QueuePulseOptions();
         configure?.Invoke(options);
 
-        services.AddSingleton(options);
+        var clientOptions = new QueuePulseClientOptions();
+        configureClient?.Invoke(clientOptions);
 
-        services.TryAddSingleton<IJobQueue>(_ => new ChannelJobQueue());
+        services.AddSingleton(options);
+        services.AddSingleton(clientOptions);
+
+        // queues
+        services.TryAddSingleton<IQueueManager, InMemoryQueueManager>();
+
+        // repo + runtime
         services.TryAddSingleton<IJobRepository, InMemoryJobRepository>();
         services.TryAddSingleton<IJobRuntimeRegistry, InMemoryJobRuntimeRegistry>();
 
-        // Registry
+        // registry
         services.TryAddSingleton<JobHandlerRegistry>();
         services.TryAddSingleton<IJobHandlerRegistry>(sp => sp.GetRequiredService<JobHandlerRegistry>());
 
-        // Progress publisher (по умолчанию - no-op)
+        // progress publisher default no-op
         services.TryAddSingleton<IJobProgressPublisher>(NullJobProgressPublisher.Instance);
 
-        // Client
+        // client
         services.TryAddSingleton<IJobClient, JobClient>();
 
-        // Worker
+        // worker
         services.AddHostedService<JobWorker>();
+
+        // pre-create default queue at startup
+        services.AddSingleton<IStartupHook>(sp =>
+        {
+            var qm = sp.GetRequiredService<IQueueManager>();
+            qm.GetOrCreate(options.DefaultQueueName);
+            return new StartupHook();
+        });
+        services.AddHostedService<StartupHookHostedService>();
 
         return services;
     }
@@ -47,29 +61,23 @@ public static class ServiceCollectionExtensions
         where THandler : class, IJobHandler
     {
         services.AddTransient<THandler>();
-
-        // Регистрируем mapping "type -> handlerType" после построения provider:
-        services.PostConfigureRegistry(registry => registry.Register(type, typeof(THandler)));
+        services.PostConfigureRegistry(reg => reg.Register(type, typeof(THandler)));
         return services;
     }
 
-    // маленький хак без Options: делаем "post-build" регистрацию через фабрику singleton
     private static IServiceCollection PostConfigureRegistry(this IServiceCollection services, Action<JobHandlerRegistry> cfg)
     {
         services.AddSingleton<IStartupHook>(sp =>
         {
-            var reg = sp.GetRequiredService<JobHandlerRegistry>();
-            cfg(reg);
+            cfg(sp.GetRequiredService<JobHandlerRegistry>());
             return new StartupHook();
         });
 
-        // гарантируем создание hook при старте
         services.AddHostedService<StartupHookHostedService>();
         return services;
     }
 
     private interface IStartupHook { }
-
     private sealed class StartupHook : IStartupHook { }
 
     private sealed class StartupHookHostedService : Microsoft.Extensions.Hosting.IHostedService

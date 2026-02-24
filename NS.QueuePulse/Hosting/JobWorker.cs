@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NS.QueuePulse.Abstractions;
@@ -9,7 +10,11 @@ namespace NS.QueuePulse.Hosting;
 
 public sealed class QueuePulseOptions
 {
-    public int WorkerCount { get; set; } = 1;
+    public string DefaultQueueName { get; set; } = "default";
+    public int DefaultWorkersPerQueue { get; set; } = 1;
+
+    // например: { ["heavy"]=2, ["realtime"]=4 }
+    public ConcurrentDictionary<string, int> WorkersPerQueue { get; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 internal sealed class JobProgressReporter : IProgressSink
@@ -29,29 +34,20 @@ internal sealed class JobProgressReporter : IProgressSink
 
     public void Report(ProgressSnapshot snapshot)
     {
-        // 1) сохраняем в репо (атомарно)
         _repo.UpdateAsync(_jobId, job => job.UpdateProgress(snapshot), CancellationToken.None).GetAwaiter().GetResult();
-
-        // 2) пушим наружу (SignalR/лог/что угодно) — fire-and-forget
         _ = SafePublishAsync(snapshot);
     }
 
     private async Task SafePublishAsync(ProgressSnapshot snapshot)
     {
-        try
-        {
-            await _publisher.PublishAsync(_jobId, snapshot, CancellationToken.None).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _log.LogDebug(ex, "Progress publish failed for job {JobId}", _jobId);
-        }
+        try { await _publisher.PublishAsync(_jobId, snapshot, CancellationToken.None).ConfigureAwait(false); }
+        catch (Exception ex) { _log.LogDebug(ex, "Progress publish failed for job {JobId}", _jobId); }
     }
 }
 
 public sealed class JobWorker : BackgroundService
 {
-    private readonly IJobQueue _queue;
+    private readonly IQueueManager _queues;
     private readonly IJobRepository _repo;
     private readonly IJobHandlerRegistry _handlers;
     private readonly IJobProgressPublisher _publisher;
@@ -59,8 +55,10 @@ public sealed class JobWorker : BackgroundService
     private readonly QueuePulseOptions _options;
     private readonly ILogger<JobWorker> _log;
 
+    private readonly ConcurrentDictionary<string, bool> _startedQueues = new(StringComparer.OrdinalIgnoreCase);
+
     public JobWorker(
-        IJobQueue queue,
+        IQueueManager queues,
         IJobRepository repo,
         IJobHandlerRegistry handlers,
         IJobProgressPublisher publisher,
@@ -68,7 +66,7 @@ public sealed class JobWorker : BackgroundService
         QueuePulseOptions options,
         ILogger<JobWorker> log)
     {
-        _queue = queue;
+        _queues = queues;
         _repo = repo;
         _handlers = handlers;
         _publisher = publisher;
@@ -79,25 +77,49 @@ public sealed class JobWorker : BackgroundService
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var workers = Math.Max(1, _options.WorkerCount);
-        Task[] tasks = new Task[workers];
-        for (int i = 0; i < workers; i++)
-        {
-            tasks[i] = ConsumeLoopAsync(i + 1, stoppingToken);
-        }
-        return Task.WhenAll(tasks);
+        // 1) гарантируем default queue
+        _queues.GetOrCreate(_options.DefaultQueueName);
+
+        // 2) стартуем consumers для уже существующих очередей
+        foreach (var q in _queues.Names)
+            StartQueueConsumers(q, stoppingToken);
+
+        // 3) динамические очереди: как только создана — запускаем consumers
+        _queues.QueueCreated += name => StartQueueConsumers(name, stoppingToken);
+
+        // keep alive
+        return Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
-    private async Task ConsumeLoopAsync(int workerNo, CancellationToken stoppingToken)
+    private void StartQueueConsumers(string queueName, CancellationToken stoppingToken)
     {
-        _log.LogInformation("QueuePulse worker #{WorkerNo} started", workerNo);
+        if (!_startedQueues.TryAdd(queueName, true))
+            return;
+
+        var workers = _options.WorkersPerQueue.TryGetValue(queueName, out var w)
+            ? Math.Max(1, w)
+            : Math.Max(1, _options.DefaultWorkersPerQueue);
+
+        _log.LogInformation("QueuePulse: start {Workers} worker(s) for queue '{Queue}'", workers, queueName);
+
+        var queue = _queues.GetOrCreate(queueName);
+
+        for (int i = 0; i < workers; i++)
+        {
+            _ = Task.Run(() => ConsumeLoopAsync(queueName, i + 1, queue, stoppingToken), stoppingToken);
+        }
+    }
+
+    private async Task ConsumeLoopAsync(string queueName, int workerNo, IJobQueue queue, CancellationToken stoppingToken)
+    {
+        _log.LogInformation("QueuePulse worker {WorkerNo} started for queue '{Queue}'", workerNo, queueName);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             JobTicket ticket;
             try
             {
-                ticket = await _queue.DequeueAsync(stoppingToken).ConfigureAwait(false);
+                ticket = await queue.DequeueAsync(stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -107,7 +129,7 @@ public sealed class JobWorker : BackgroundService
             await ProcessOneAsync(ticket, stoppingToken).ConfigureAwait(false);
         }
 
-        _log.LogInformation("QueuePulse worker #{WorkerNo} stopped", workerNo);
+        _log.LogInformation("QueuePulse worker {WorkerNo} stopped for queue '{Queue}'", workerNo, queueName);
     }
 
     private async Task ProcessOneAsync(JobTicket ticket, CancellationToken stoppingToken)
@@ -115,41 +137,34 @@ public sealed class JobWorker : BackgroundService
         var job = await _repo.GetAsync(ticket.JobId, stoppingToken).ConfigureAwait(false);
         if (job is null) return;
 
-        // уже финализировано — просто пропускаем
         if (job.Status is JobStatus.Completed or JobStatus.Failed or JobStatus.Canceled)
             return;
 
-        // runtime handle (pause/cancel)
         var handle = _runtime.GetOrCreate(ticket.JobId);
 
-        // если job отменена до старта — пропустить
-        if (job.Status == JobStatus.Canceled)
-            return;
-
-        // если поставили на паузу до старта — подождать
-        if (job.Status == JobStatus.Paused)
-            handle.Gate.Pause();
-
-        // если уже Canceling — отменяем токен, чтобы обработчик не стартовал
-        if (job.Status == JobStatus.Canceling)
-            await handle.Cts.CancelAsync();
+        if (job.Status == JobStatus.Paused) handle.Gate.Pause();
+        if (job.Status == JobStatus.Canceling) handle.Cts.Cancel();
 
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, handle.Cts.Token);
         var ct = linkedCts.Token;
 
-        // стартуем только из Queued
         if (job.Status == JobStatus.Queued)
-        {
             await _repo.UpdateAsync(ticket.JobId, j => j.Start(DateTimeOffset.UtcNow), stoppingToken).ConfigureAwait(false);
-        }
 
-        // кооперативная пауза (в том числе “до старта”)
         await handle.Gate.WaitIfPausedAsync(ct).ConfigureAwait(false);
+
+        IJobHandler handler;
+        try { handler = _handlers.Resolve(ticket.Type); }
+        catch (Exception ex)
+        {
+            await _repo.UpdateAsync(ticket.JobId, j => j.Fail(DateTimeOffset.UtcNow, ex, "NoHandler"), stoppingToken).ConfigureAwait(false);
+            _runtime.Remove(ticket.JobId);
+            return;
+        }
 
         var reporter = new JobProgressReporter(ticket.JobId, _repo, _publisher, _log);
         var tracker = new ProgressTracker(reporter);
 
-        // “живой” контекст
         var ctx = new JobContext(
             jobId: ticket.JobId,
             type: ticket.Type,
@@ -159,37 +174,19 @@ public sealed class JobWorker : BackgroundService
             token: ct
         );
 
-        IJobHandler handler;
         try
         {
-            handler = _handlers.Resolve(ticket.Type);
-        }
-        catch (Exception ex)
-        {
-            await _repo.UpdateAsync(ticket.JobId, j => j.Fail(DateTimeOffset.UtcNow, ex, "NoHandler"), stoppingToken).ConfigureAwait(false);
-            _runtime.Remove(ticket.JobId);
-            return;
-        }
-
-        try
-        {
-            // минимальный прогресс по умолчанию
             using (var stage = tracker.StartStage("Executing", total: 1, weight: 1.0))
             {
                 await handler.ExecuteAsync(ctx, ct).ConfigureAwait(false);
                 stage.Report(1);
             }
 
-            // если успели запросить cancel, считаем cancel, а не complete
             var after = await _repo.GetAsync(ticket.JobId, stoppingToken).ConfigureAwait(false);
             if (after?.Status == JobStatus.Canceling || ct.IsCancellationRequested)
-            {
                 await _repo.UpdateAsync(ticket.JobId, j => j.Cancel(DateTimeOffset.UtcNow), stoppingToken).ConfigureAwait(false);
-            }
             else
-            {
                 await _repo.UpdateAsync(ticket.JobId, j => j.Complete(DateTimeOffset.UtcNow), stoppingToken).ConfigureAwait(false);
-            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

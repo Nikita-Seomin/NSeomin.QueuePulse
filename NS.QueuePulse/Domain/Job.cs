@@ -39,6 +39,7 @@ public sealed class Job
 {
     public JobId Id { get; }
     public JobType Type { get; }
+    public string Queue { get; }
     public string? PayloadJson { get; }
 
     public JobStatus Status { get; private set; }
@@ -51,10 +52,11 @@ public sealed class Job
 
     public bool HasStarted => StartedAtUtc is not null;
 
-    private Job(JobId id, JobType type, string? payloadJson, DateTimeOffset nowUtc)
+    private Job(JobId id, JobType type, string queueName, string? payloadJson, DateTimeOffset nowUtc)
     {
         Id = id;
         Type = type;
+        Queue = string.IsNullOrWhiteSpace(queueName) ? "default" : queueName;
         PayloadJson = payloadJson;
         CreatedAtUtc = nowUtc;
 
@@ -69,8 +71,8 @@ public sealed class Job
         );
     }
 
-    public static Job Create(JobType type, string? payloadJson, DateTimeOffset nowUtc)
-        => new(JobId.New(), type, payloadJson, nowUtc);
+    public static Job Create(JobType type, string queueName, string? payloadJson, DateTimeOffset nowUtc)
+        => new(JobId.New(), type, queueName, payloadJson, nowUtc);
 
     public void MarkQueued(DateTimeOffset nowUtc)
     {

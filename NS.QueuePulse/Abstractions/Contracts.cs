@@ -3,10 +3,11 @@ using NS.QueuePulse.Domain;
 
 namespace NS.QueuePulse.Abstractions;
 
-public sealed record JobTicket(JobId JobId, JobType Type, string? PayloadJson);
+public sealed record JobTicket(string QueueName, JobId JobId, JobType Type, string? PayloadJson);
 
 public sealed record JobSnapshot(
     Guid Id,
+    string Queue,
     string Type,
     JobStatus Status,
     ProgressSnapshot Progress,
@@ -23,9 +24,13 @@ public interface IJobHandler
 
 public interface IJobClient
 {
+    // default queue
     Task<JobId> EnqueueAsync(JobType type, string? payloadJson = null, CancellationToken ct = default);
-
     Task<JobId> EnqueueAsync<TArgs>(JobType type, TArgs args, CancellationToken ct = default);
+
+    // named queue
+    Task<JobId> EnqueueAsync(string queueName, JobType type, string? payloadJson = null, CancellationToken ct = default);
+    Task<JobId> EnqueueAsync<TArgs>(string queueName, JobType type, TArgs args, CancellationToken ct = default);
 
     Task PauseAsync(JobId id, CancellationToken ct = default);
     Task ResumeAsync(JobId id, CancellationToken ct = default);
@@ -35,20 +40,29 @@ public interface IJobClient
     Task<IReadOnlyList<JobSnapshot>> ListAsync(int take = 100, CancellationToken ct = default);
 }
 
+// очередь конкретного имени
 public interface IJobQueue
 {
     ValueTask EnqueueAsync(JobTicket ticket, CancellationToken ct);
     ValueTask<JobTicket> DequeueAsync(CancellationToken ct);
 }
 
+// менеджер очередей (создаёт/выдаёт named queues)
+public interface IQueueManager
+{
+    IJobQueue GetOrCreate(string queueName, int? capacity = null);
+    bool TryGet(string queueName, out IJobQueue queue);
+    IReadOnlyCollection<string> Names { get; }
+
+    // чтобы воркер мог стартовать consumers для новых очередей
+    event Action<string>? QueueCreated;
+}
+
 public interface IJobRepository
 {
     Task AddAsync(Job job, CancellationToken ct);
     Task<Job?> GetAsync(JobId id, CancellationToken ct);
-
-    /// <summary>Атомарное изменение job (важно для частого прогресса)</summary>
     Task UpdateAsync(JobId id, Action<Job> mutate, CancellationToken ct);
-
     Task<IReadOnlyList<Job>> ListAsync(int take, CancellationToken ct);
 }
 
