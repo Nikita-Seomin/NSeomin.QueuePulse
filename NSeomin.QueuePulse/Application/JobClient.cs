@@ -1,9 +1,9 @@
 using System.Text.Json;
-using NS.QueuePulse.Abstractions;
-using NS.QueuePulse.Domain;
-using NS.QueuePulse.Infrastructure.InMemory;
+using NSeomin.QueuePulse.Domain;
+using NSeomin.QueuePulse.Abstractions;
+using NSeomin.QueuePulse.Infrastructure.InMemory;
 
-namespace NS.QueuePulse.Application;
+namespace NSeomin.QueuePulse.Application;
 
 public sealed class NullJobProgressPublisher : IJobProgressPublisher
 {

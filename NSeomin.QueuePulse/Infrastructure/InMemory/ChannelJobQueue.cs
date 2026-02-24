@@ -1,7 +1,7 @@
 using System.Threading.Channels;
-using NS.QueuePulse.Abstractions;
+using NSeomin.QueuePulse.Abstractions;
 
-namespace NS.QueuePulse.Infrastructure.InMemory;
+namespace NSeomin.QueuePulse.Infrastructure.InMemory;
 
 public sealed class ChannelJobQueue : IJobQueue
 {

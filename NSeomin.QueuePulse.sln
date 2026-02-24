@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NS.QueuePulse", "NS.QueuePulse\NS.QueuePulse.csproj", "{AF6142E5-1531-43D0-A0CC-6FA3CCE02858}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSeomin.QueuePulse", "NSeomin.QueuePulse\NSeomin.QueuePulse.csproj", "{AF6142E5-1531-43D0-A0CC-6FA3CCE02858}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QueuePulse.Sample", "QueuePulse.Sample\QueuePulse.Sample.csproj", "{E2837053-12EC-436F-AF46-34571E3C4DA5}"
 EndProject

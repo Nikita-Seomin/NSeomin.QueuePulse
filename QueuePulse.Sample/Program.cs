@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NS.QueuePulse.Abstractions;
-using NS.QueuePulse.Hosting;
+using NSeomin.QueuePulse.Abstractions;
+using NSeomin.QueuePulse.Hosting;
 using QueuePulse.Sample.Example;
-using NS.QueuePulse.Domain;
+using NSeomin.QueuePulse.Domain;
 
 static void Assert(bool condition, string message)
 {
@@ -105,7 +105,7 @@ Console.WriteLine("=== QueuePulse Sample: tests ===");
 
     // дождёмся что job стартанула
     await WaitUntilAsync(
-        async () => (await client.GetAsync(jobId))?.Status is NS.QueuePulse.Domain.JobStatus.Running,
+        async () => (await client.GetAsync(jobId))?.Status is NSeomin.QueuePulse.Domain.JobStatus.Running,
         timeout: TimeSpan.FromSeconds(5),
         pollInterval: TimeSpan.FromMilliseconds(100),
         failureMessage: "[T3] job didn't reach Running");
@@ -114,7 +114,7 @@ Console.WriteLine("=== QueuePulse Sample: tests ===");
 
     // дождёмся состояния Paused (кооперативно — job дойдёт до ближайшего чекпойнта)
     await WaitUntilAsync(
-        async () => (await client.GetAsync(jobId))?.Status is NS.QueuePulse.Domain.JobStatus.Paused,
+        async () => (await client.GetAsync(jobId))?.Status is NSeomin.QueuePulse.Domain.JobStatus.Paused,
         timeout: TimeSpan.FromSeconds(5),
         pollInterval: TimeSpan.FromMilliseconds(100),
         failureMessage: "[T3] job didn't reach Paused");
@@ -157,7 +157,7 @@ Console.WriteLine("=== QueuePulse Sample: tests ===");
     Console.WriteLine($"[T4] Enqueued default: {jobId}");
 
     await WaitUntilAsync(
-        async () => (await client.GetAsync(jobId))?.Status is NS.QueuePulse.Domain.JobStatus.Running,
+        async () => (await client.GetAsync(jobId))?.Status is NSeomin.QueuePulse.Domain.JobStatus.Running,
         timeout: TimeSpan.FromSeconds(5),
         pollInterval: TimeSpan.FromMilliseconds(100),
         failureMessage: "[T4] job didn't reach Running");
@@ -165,7 +165,7 @@ Console.WriteLine("=== QueuePulse Sample: tests ===");
     await client.CancelAsync(jobId);
 
     await WaitUntilAsync(
-        async () => (await client.GetAsync(jobId))?.Status is NS.QueuePulse.Domain.JobStatus.Canceled,
+        async () => (await client.GetAsync(jobId))?.Status is NSeomin.QueuePulse.Domain.JobStatus.Canceled,
         timeout: TimeSpan.FromSeconds(5),
         pollInterval: TimeSpan.FromMilliseconds(100),
         failureMessage: "[T4] job didn't reach Canceled");
@@ -188,7 +188,7 @@ Console.WriteLine("=== QueuePulse Sample: tests ===");
         {
             var list = await client.ListAsync(200);
             var running = list.Count(x => ids.Any(id => x.Id == id.Value) &&
-                                          x.Status == NS.QueuePulse.Domain.JobStatus.Running);
+                                          x.Status == NSeomin.QueuePulse.Domain.JobStatus.Running);
             return running >= 2;
         },
         timeout: TimeSpan.FromSeconds(6),

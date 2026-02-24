@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using NS.QueuePulse.Application;
-using NS.QueuePulse.Domain;
+using NSeomin.QueuePulse.Domain;
+using NSeomin.QueuePulse.Application;
 
-namespace NS.QueuePulse.Infrastructure.InMemory;
+namespace NSeomin.QueuePulse.Infrastructure.InMemory;
 
 public interface IJobRuntimeRegistry
 {

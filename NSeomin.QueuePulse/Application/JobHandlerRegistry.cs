@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
-using NS.QueuePulse.Abstractions;
-using NS.QueuePulse.Domain;
+using NSeomin.QueuePulse.Domain;
+using NSeomin.QueuePulse.Abstractions;
 
-namespace NS.QueuePulse.Application;
+namespace NSeomin.QueuePulse.Application;
 
 public sealed class JobHandlerRegistry : IJobHandlerRegistry
 {

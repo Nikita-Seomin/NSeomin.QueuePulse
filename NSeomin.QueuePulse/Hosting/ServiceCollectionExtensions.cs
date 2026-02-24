@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NS.QueuePulse.Abstractions;
-using NS.QueuePulse.Application;
-using NS.QueuePulse.Domain;
-using NS.QueuePulse.Infrastructure.InMemory;
+using NSeomin.QueuePulse.Domain;
+using NSeomin.QueuePulse.Abstractions;
+using NSeomin.QueuePulse.Application;
+using NSeomin.QueuePulse.Infrastructure.InMemory;
 
-namespace NS.QueuePulse.Hosting;
+namespace NSeomin.QueuePulse.Hosting;
 
 public static class ServiceCollectionExtensions
 {

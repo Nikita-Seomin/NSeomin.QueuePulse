@@ -1,5 +1,5 @@
-using NS.QueuePulse.Abstractions;
-using NS.QueuePulse.Application;
+using NSeomin.QueuePulse.Abstractions;
+using NSeomin.QueuePulse.Application;
 
 namespace QueuePulse.Sample.Example;
 

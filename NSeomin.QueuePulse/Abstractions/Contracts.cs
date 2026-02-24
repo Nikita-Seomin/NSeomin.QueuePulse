@@ -1,7 +1,7 @@
-using NS.QueuePulse.Application;
-using NS.QueuePulse.Domain;
+using NSeomin.QueuePulse.Domain;
+using NSeomin.QueuePulse.Application;
 
-namespace NS.QueuePulse.Abstractions;
+namespace NSeomin.QueuePulse.Abstractions;
 
 public sealed record JobTicket(string QueueName, JobId JobId, JobType Type, string? PayloadJson);
 

@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using NS.QueuePulse.Abstractions;
-using NS.QueuePulse.Domain;
+using NSeomin.QueuePulse.Domain;
+using NSeomin.QueuePulse.Abstractions;
 
-namespace NS.QueuePulse.Infrastructure.InMemory;
+namespace NSeomin.QueuePulse.Infrastructure.InMemory;
 
 public sealed class InMemoryJobRepository : IJobRepository
 {

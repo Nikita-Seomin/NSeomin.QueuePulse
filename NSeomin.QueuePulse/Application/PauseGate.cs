@@ -1,4 +1,4 @@
-namespace NS.QueuePulse.Application;
+namespace NSeomin.QueuePulse.Application;
 
 /// <summary>
 /// Кооперативная пауза: job в коде вызывает WaitIfPausedAsync().

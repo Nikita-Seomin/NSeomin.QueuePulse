@@ -1,6 +1,6 @@
-using NS.QueuePulse.Domain;
+using NSeomin.QueuePulse.Domain;
 
-namespace NS.QueuePulse.Application;
+namespace NSeomin.QueuePulse.Application;
 
 public interface IProgressSink
 {

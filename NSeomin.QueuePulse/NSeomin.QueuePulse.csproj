@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <PackageId>NSeomin.QueuePulse</PackageId>
+        <Version>0.1.0</Version>
+        <Authors>Nikita-Seomin</Authors>
+        <Description>In-process job queue with pause/resume/cancel and staged progress.</Description>
+
+        <RepositoryUrl>https://github.com/Nikita-Seomin/NS.QueuePulse</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+
+        <PackageTags>background-jobs;queue;worker;hostedservice;progress</PackageTags>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <RootNamespace>NSeomin.QueuePulse</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
+      <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.3" />
+    </ItemGroup>
+
+</Project>

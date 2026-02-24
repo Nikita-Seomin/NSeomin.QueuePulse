@@ -1,4 +1,4 @@
-namespace NS.QueuePulse.Domain;
+namespace NSeomin.QueuePulse.Domain;
 
 public readonly record struct JobId(Guid Value)
 {

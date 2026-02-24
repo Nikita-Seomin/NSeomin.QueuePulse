@@ -1,7 +1,7 @@
 using System.Text.Json;
-using NS.QueuePulse.Domain;
+using NSeomin.QueuePulse.Domain;
 
-namespace NS.QueuePulse.Application;
+namespace NSeomin.QueuePulse.Application;
 
 /// <summary>
 /// Runtime-контекст выполнения job (Application layer).
